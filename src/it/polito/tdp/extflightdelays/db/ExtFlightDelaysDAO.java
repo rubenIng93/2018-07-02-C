@@ -7,7 +7,9 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
+import it.polito.tdp.extflightdelays.model.VoliTraAereoporti;
 import it.polito.tdp.extflightdelays.model.Airline;
 import it.polito.tdp.extflightdelays.model.Airport;
 import it.polito.tdp.extflightdelays.model.Flight;
@@ -37,7 +39,7 @@ public class ExtFlightDelaysDAO {
 		}
 	}
 
-	public List<Airport> loadAllAirports() {
+	public List<Airport> loadAllAirports(Map<Integer, Airport> idMapAirport) {
 		String sql = "SELECT * FROM airports";
 		List<Airport> result = new ArrayList<Airport>();
 
@@ -51,6 +53,7 @@ public class ExtFlightDelaysDAO {
 						rs.getString("CITY"), rs.getString("STATE"), rs.getString("COUNTRY"), rs.getDouble("LATITUDE"),
 						rs.getDouble("LONGITUDE"), rs.getDouble("TIMEZONE_OFFSET"));
 				result.add(airport);
+				idMapAirport.put(rs.getInt("ID"), airport);
 			}
 
 			conn.close();
@@ -90,5 +93,105 @@ public class ExtFlightDelaysDAO {
 			System.out.println("Errore connessione al database");
 			throw new RuntimeException("Error Connection Database");
 		}
+	}
+	
+	public List<Airport> numMinimoCompagnie(Integer limite, Map<Integer, Airport> idMapAirport){
+		
+		String sql = "SELECT f.ORIGIN_AIRPORT_ID, COUNT(DISTINCT f.AIRLINE_ID) AS cnt " + 
+				"FROM flights f " + 
+				"GROUP BY f.ORIGIN_AIRPORT_ID " + 
+				"HAVING COUNT(DISTINCT f.AIRLINE_ID) > ? ";
+		
+		List<Airport> result = new ArrayList<>();
+		
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, limite);
+			ResultSet rs = st.executeQuery();
+
+			while (rs.next()) {
+				
+				Airport air = idMapAirport.get(rs.getInt("f.ORIGIN_AIRPORT_ID"));
+				
+				result.add(air);
+			}
+
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+		
+	}
+	
+	public List<Airport> numMinimoCompagnieDestinazione(Integer limite, Map<Integer, Airport> idMapAirport){
+		
+		String sql = "SELECT f.DESTINATION_AIRPORT_ID, COUNT(DISTINCT f.AIRLINE_ID) AS cnt " + 
+				"FROM flights f " + 
+				"GROUP BY f.DESTINATION_AIRPORT_ID " + 
+				"HAVING COUNT(DISTINCT f.AIRLINE_ID) > ? ";
+		
+		List<Airport> result = new ArrayList<>();
+		
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, limite);
+			ResultSet rs = st.executeQuery();
+
+			while (rs.next()) {
+				
+				Airport air = idMapAirport.get(rs.getInt("f.DESTINATION_AIRPORT_ID"));
+				
+				result.add(air);
+			}
+
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+		
+	}
+	
+	public List<VoliTraAereoporti> getVoliTraAereoporti(Map<Integer, Airport> idMapAirport){
+		
+		String sql = "SELECT f.ORIGIN_AIRPORT_ID, f.DESTINATION_AIRPORT_ID, COUNT(f.ID) AS cnt " + 
+				"FROM flights f " + 
+				"GROUP BY f.ORIGIN_AIRPORT_ID, f.DESTINATION_AIRPORT_ID ";
+		
+		List<VoliTraAereoporti> result = new ArrayList<>();
+		
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			
+			ResultSet rs = st.executeQuery();
+
+			while (rs.next()) {
+				
+				VoliTraAereoporti vta = new VoliTraAereoporti(idMapAirport.get(rs.getInt("f.ORIGIN_AIRPORT_ID")), 
+						idMapAirport.get(rs.getInt("f.DESTINATION_AIRPORT_ID")), 
+						rs.getInt("cnt"));
+				
+				result.add(vta);
+			}
+
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+		
 	}
 }
